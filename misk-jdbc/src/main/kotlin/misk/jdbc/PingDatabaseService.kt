@@ -78,7 +78,7 @@ constructor(private val config: DataSourceConfig, private val deployment: Deploy
         "Something is wrong with your vschema and unfortunately vtcombo does not " +
           "currently have good error reporting on this. Please do an ocular inspection."
       }
-      else -> "Problem pinging url $jdbcUrl"
+      else -> "Problem pinging url ${redactJdbcUrl(jdbcUrl)}"
     }
   }
 
