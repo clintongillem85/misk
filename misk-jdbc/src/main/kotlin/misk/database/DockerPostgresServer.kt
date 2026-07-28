@@ -7,13 +7,8 @@ import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.core.async.ResultCallbackTemplate
 import com.zaxxer.hikari.util.DriverDataSource
 import java.sql.Connection
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
-import misk.backoff.DontRetryException
-import misk.backoff.ExponentialBackoff
-import misk.backoff.RetryConfig
-import misk.backoff.retry
 import misk.jdbc.DataSourceConfig
 import mu.KotlinLogging
 import wisp.deployment.TESTING
@@ -57,20 +52,7 @@ class DockerPostgresServer(val config: DataSourceConfig, val docker: DockerClien
     const val CONTAINER_NAME = "misk-postgres-testing"
 
     fun pullImage() {
-      if (imagePulled.get()) {
-        return
-      }
-
-      synchronized(this) {
-        if (imagePulled.get()) {
-          return
-        }
-
-        if (runCommand("docker images --digests | grep -q $SHA || docker pull $IMAGE") != 0) {
-          logger.warn("Failed to pull Postgres docker image. Proceeding regardless.")
-        }
-        imagePulled.set(true)
-      }
+      pullDockerImage(IMAGE, SHA, imagePulled, logger, "Postgres")
     }
 
     private val imagePulled = AtomicBoolean()
@@ -118,14 +100,7 @@ class DockerPostgresServer(val config: DataSourceConfig, val docker: DockerClien
           .id!!
       val containerId = containerId!!
       docker.startContainerCmd(containerId).exec()
-      docker
-        .logContainerCmd(containerId)
-        .withStdErr(true)
-        .withStdOut(true)
-        .withFollowStream(true)
-        .withSince(0)
-        .exec(LogContainerResultCallback())
-        .awaitStarted()
+      docker.followContainerLogs(containerId, LogContainerResultCallback())
     }
     logger.info("Started Postgres with container id $containerId")
 
@@ -134,19 +109,12 @@ class DockerPostgresServer(val config: DataSourceConfig, val docker: DockerClien
   }
 
   private fun waitUntilHealthy() {
-    try {
-      val retryConfig = RetryConfig.Builder(20, ExponentialBackoff(Duration.ofSeconds(1), Duration.ofSeconds(5)))
-      retry(retryConfig.build()) {
-        server.openConnection().use { c ->
-          val resultSet = c.createStatement().executeQuery("SELECT COUNT(*) as count FROM pg_catalog.pg_database")
-          resultSet.next()
-          check(resultSet.getInt("count") > 0)
-        }
+    awaitDatabaseHealthy("Postgres server") {
+      server.openConnection().use { c ->
+        val resultSet = c.createStatement().executeQuery("SELECT COUNT(*) as count FROM pg_catalog.pg_database")
+        resultSet.next()
+        check(resultSet.getInt("count") > 0)
       }
-    } catch (e: DontRetryException) {
-      throw Exception(e.message)
-    } catch (e: Exception) {
-      throw Exception("Postgres server failed to start up in time", e)
     }
   }
 

@@ -14,14 +14,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.sql.Connection
-import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
-import misk.backoff.DontRetryException
-import misk.backoff.ExponentialBackoff
-import misk.backoff.RetryConfig
-import misk.backoff.retry
 import misk.jdbc.DataSourceConfig
 import misk.jdbc.DataSourceType
 import misk.jdbc.uniqueInt
@@ -91,20 +86,7 @@ class DockerTidbCluster(
     const val CONTAINER_NAME = "misk-tidb-testing"
 
     fun pullImage() {
-      if (imagePulled.get()) {
-        return
-      }
-
-      synchronized(this) {
-        if (imagePulled.get()) {
-          return
-        }
-
-        if (runCommand("docker images --digests | grep -q $SHA || docker pull $IMAGE") != 0) {
-          logger.warn("Failed to pull TiDB docker image. Proceeding regardless.")
-        }
-        imagePulled.set(true)
-      }
+      pullDockerImage(IMAGE, SHA, imagePulled, logger, "TiDB")
     }
 
     private val imagePulled = AtomicBoolean()
@@ -166,14 +148,7 @@ class DockerTidbCluster(
           .id!!
       val containerId = containerId!!
       docker.startContainerCmd(containerId).exec()
-      docker
-        .logContainerCmd(containerId)
-        .withStdErr(true)
-        .withStdOut(true)
-        .withFollowStream(true)
-        .withSince(0)
-        .exec(LogContainerResultCallback())
-        .awaitStarted()
+      docker.followContainerLogs(containerId, LogContainerResultCallback())
     }
     logger.info("Started TiDB with container id $containerId")
 
@@ -208,18 +183,11 @@ class DockerTidbCluster(
   }
 
   private fun waitUntilHealthy() {
-    try {
-      val retryConfig = RetryConfig.Builder(20, ExponentialBackoff(Duration.ofSeconds(1), Duration.ofSeconds(5)))
-      retry(retryConfig.build()) {
-        cluster.openConnection().use { c ->
-          val result = c.createStatement().executeQuery("SELECT 1").uniqueInt()
-          check(result == 1)
-        }
+    awaitDatabaseHealthy("TiDB cluster") {
+      cluster.openConnection().use { c ->
+        val result = c.createStatement().executeQuery("SELECT 1").uniqueInt()
+        check(result == 1)
       }
-    } catch (e: DontRetryException) {
-      throw Exception(e.message)
-    } catch (e: Exception) {
-      throw Exception("TiDB cluster failed to start up in time", e)
     }
   }
 
