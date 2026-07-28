@@ -17,7 +17,7 @@ internal class WireMessageAdapter(messageType: Class<Message<*, *>>, moshi: Mosh
     try {
       Class.forName("${messageType.name}\$Builder", true, messageType.classLoader)
     } catch (e: ClassNotFoundException) {
-      throw AssertionError("no builder for ${messageType.name}")
+      throw AssertionError("no builder for ${messageType.name}", e)
     }
       as Class<Message.Builder<*, *>>
 

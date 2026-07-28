@@ -138,7 +138,7 @@ class CronManager @Inject constructor() {
                 logger.info { "Executing cronjob $name" }
                 cronEntry.runnable.run()
               } catch (t: Throwable) {
-                logger.error { "Exception on cronjob $name: ${t.stackTraceToString()}" }
+                logger.error(t) { "Exception on cronjob $name" }
               } finally {
                 logger.info { "Executing cronjob $name complete" }
               }

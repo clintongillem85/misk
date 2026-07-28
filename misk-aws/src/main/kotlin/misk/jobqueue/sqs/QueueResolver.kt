@@ -100,6 +100,7 @@ internal constructor(
 
       redrivePolicyAdapter.fromJson(redrivePolicyJson)?.maxReceiveCount ?: 10
     } catch (e: Exception) {
+      log.warn(e) { "Failed to read RedrivePolicy for $queueUrl, defaulting maxReceiveCount to 10" }
       10
     }
   }

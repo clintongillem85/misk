@@ -37,7 +37,7 @@ open class KeyReader {
       val reader = JsonKeysetReader.withString(key.encrypted_key!!.value)
       KeysetHandle.read(reader, kek)
     } catch (ex: GeneralSecurityException) {
-      logger.warn { "using obsolete key format, rotate your keys when possible" }
+      logger.warn(ex) { "using obsolete key format, rotate your keys when possible" }
       val reader = JsonKeysetReader.withString(key.encrypted_key!!.value)
       KeysetHandle.read(reader, masterKey)
     }

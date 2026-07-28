@@ -92,7 +92,7 @@ internal class FieldBinding(
       try {
         return builderType.getField(name)
       } catch (e: NoSuchFieldException) {
-        throw AssertionError("No builder field ${builderType.simpleName}#$name")
+        throw AssertionError("No builder field ${builderType.simpleName}#$name", e)
       }
     }
 
@@ -100,7 +100,7 @@ internal class FieldBinding(
       try {
         return builderType.getMethod(name, type)
       } catch (e: NoSuchMethodException) {
-        throw AssertionError("No builder method ${builderType.simpleName}#$name (${type.name}")
+        throw AssertionError("No builder method ${builderType.simpleName}#$name (${type.name}", e)
       }
     }
 
