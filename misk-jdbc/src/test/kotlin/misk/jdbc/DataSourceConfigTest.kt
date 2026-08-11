@@ -338,4 +338,22 @@ class DataSourceConfigTest {
     val jdbcUrl = config.buildJdbcUrl(TESTING)
     assertThat(jdbcUrl).startsWith("jdbc:tracing:mysql://")
   }
+
+  @Test
+  fun redactsKeystorePasswordsFromJdbcUrl() {
+    val config =
+      DataSourceConfig(
+        DataSourceType.MYSQL,
+        trust_certificate_key_store_url = "path/to/truststore",
+        trust_certificate_key_store_password = "trustpassword",
+        client_certificate_key_store_url = "path/to/keystore",
+        client_certificate_key_store_password = "keypassword",
+      )
+
+    val redacted = redactJdbcUrl(config.buildJdbcUrl(TESTING))
+
+    assertThat(redacted).doesNotContain("trustpassword").doesNotContain("keypassword")
+    assertThat(redacted).contains("trustCertificateKeyStorePassword=****", "clientCertificateKeyStorePassword=****")
+    assertThat(redacted).contains("trustCertificateKeyStoreUrl=path/to/truststore")
+  }
 }

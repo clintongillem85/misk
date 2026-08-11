@@ -44,9 +44,9 @@ object DockerCredentials {
     val credentialCmd = "docker-credential-$credStore"
 
     return runCatching {
-        val process =
-          ProcessBuilder("sh", "-c", "echo $registryUrl | $credentialCmd get").redirectErrorStream(true).start()
+        val process = ProcessBuilder(credentialCmd, "get").redirectErrorStream(true).start()
 
+        process.outputStream.bufferedWriter().use { it.write("$registryUrl\n") }
         process.waitFor()
 
         val output = String(process.inputStream.readAllBytes())

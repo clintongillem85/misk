@@ -400,6 +400,14 @@ constructor(
   fun canRecoverOnReplica() = this.type in listOf(DataSourceType.COCKROACHDB, DataSourceType.TIDB)
 }
 
+private val JDBC_URL_SECRET_PARAMS = Regex("(?i)([?&][^=&]*(?:password|secret)[^=&]*=)([^&]*)")
+
+/**
+ * Replaces the values of any password-like query parameters in [jdbcUrl] so it is safe to include in logs and error
+ * messages. Keystore passwords are embedded in the URL built by [DataSourceConfig.buildJdbcUrl].
+ */
+internal fun redactJdbcUrl(jdbcUrl: String): String = JDBC_URL_SECRET_PARAMS.replace(jdbcUrl, "$1****")
+
 /** Configuration element for a cluster of DataSources */
 data class DataSourceClusterConfig(val writer: DataSourceConfig, val reader: DataSourceConfig?)
 
