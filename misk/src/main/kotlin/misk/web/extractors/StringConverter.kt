@@ -1,6 +1,7 @@
 package misk.web.extractors
 
 import com.squareup.moshi.rawType
+import java.lang.reflect.InvocationTargetException
 import kotlin.jvm.Throws
 import kotlin.reflect.KType
 import kotlin.reflect.full.createType
@@ -69,7 +70,13 @@ private fun createFromValueOf(type: KType): StringConverter? {
   try {
     val javaClass = type.javaType.rawType
     val valueOfMethod = javaClass.getMethod("valueOf", String::class.java)
-    return StringConverter { param -> valueOfMethod(null, param) }
+    return StringConverter { param ->
+      try {
+        valueOfMethod(null, param)
+      } catch (e: InvocationTargetException) {
+        throw IllegalArgumentException("Invalid parameter format: $param", e.cause ?: e)
+      }
+    }
   } catch (_: ClassCastException) {} catch (_: NoSuchMethodException) {}
   return null
 }

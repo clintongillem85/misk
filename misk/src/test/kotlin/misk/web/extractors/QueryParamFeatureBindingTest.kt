@@ -230,6 +230,12 @@ internal class QueryParamFeatureBindingTest {
   }
 
   @Test
+  fun invalidEnum() {
+    val queryStringProcessor = TestMemberStore.enumParameter().toQueryBinding(stringConverterFactories)!!
+    assertFailsWith<BadRequestException> { queryStringProcessor.parameterValue(listOf("THREE")) }
+  }
+
+  @Test
   fun optionalEnumPresent() {
     val queryStringProcessor = TestMemberStore.optionalEnumParameter().toQueryBinding(stringConverterFactories)!!
     val extractedResult = queryStringProcessor.parameterValue(listOf("ONE"))

@@ -113,7 +113,7 @@ internal class AeadAdapter(typeConfig: TypeConfiguration, keyName: String) : Enc
     try {
       keyManager[keyName]
     } catch (ex: KeyNotFoundException) {
-      throw HibernateException("Cannot set field, key $keyName not found")
+      throw HibernateException("Cannot set field, key $keyName not found", ex)
     }
   }
 
@@ -136,7 +136,7 @@ internal class DeterministicAeadAdapter(typeConfig: TypeConfiguration, keyName: 
     try {
       keyManager[keyName]
     } catch (ex: KeyNotFoundException) {
-      throw HibernateException("Cannot set field, key $keyName not found")
+      throw HibernateException("Cannot set field, key $keyName not found", ex)
     }
   }
 

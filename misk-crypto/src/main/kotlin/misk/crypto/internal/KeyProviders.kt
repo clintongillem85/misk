@@ -28,6 +28,7 @@ import misk.crypto.KeyAlias
 import misk.crypto.KeyReader
 import misk.crypto.MacKeyManager
 import misk.crypto.StreamingAeadKeyManager
+import misk.logging.getLogger
 
 /** We only support AEAD keys via envelope encryption. */
 class AeadEnvelopeProvider(val key: KeyAlias) : Provider<Aead>, KeyReader() {
@@ -94,9 +95,14 @@ class HybridEncryptProvider(val key: KeyAlias) : Provider<HybridEncrypt>, KeyRea
       try {
         keysetHandle.publicKeysetHandle
       } catch (e: GeneralSecurityException) {
+        logger.warn(e) { "no public keyset for $key, encrypting with the keyset itself" }
         keysetHandle
       }
     return HybridEncryptFactory.getPrimitive(publicKeysetHandle).also { keyManager[key] = it }
+  }
+
+  companion object {
+    private val logger = getLogger<HybridEncryptProvider>()
   }
 }
 

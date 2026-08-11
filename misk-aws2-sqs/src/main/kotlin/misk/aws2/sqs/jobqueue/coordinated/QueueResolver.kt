@@ -60,10 +60,7 @@ internal constructor(
         val queueUrl =
           sqs
             .getQueueUrl(
-              GetQueueUrlRequest.builder()
-                .queueName(sqsQueueName.value)
-                .queueOwnerAWSAccountId(accountId.value)
-                .build()
+              GetQueueUrlRequest.builder().queueName(sqsQueueName.value).queueOwnerAWSAccountId(accountId.value).build()
             )
             .queueUrl()
         ensureUrlWithProperTarget(queueUrl)
@@ -107,6 +104,7 @@ internal constructor(
 
       redrivePolicyAdapter.fromJson(redrivePolicyJson)?.maxReceiveCount ?: 10
     } catch (e: Exception) {
+      log.warn(e) { "Failed to read RedrivePolicy for $queueUrl, defaulting maxReceiveCount to 10" }
       10
     }
   }

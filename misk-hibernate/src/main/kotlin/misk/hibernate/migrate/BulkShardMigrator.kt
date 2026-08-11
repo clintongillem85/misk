@@ -379,7 +379,7 @@ private constructor(
           insert.setObject(parameterIndex, value)
         }
       } catch (e: SQLException) {
-        throw RuntimeException(String.format("Can't infer type of column %s for value %s", columnName, value))
+        throw RuntimeException(String.format("Can't infer type of column %s for value %s", columnName, value), e)
       }
 
       return 1
