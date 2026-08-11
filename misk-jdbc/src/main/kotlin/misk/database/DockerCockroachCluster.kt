@@ -9,13 +9,8 @@ import com.squareup.moshi.Moshi
 import com.zaxxer.hikari.util.DriverDataSource
 import java.sql.Connection
 import java.sql.SQLException
-import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
-import misk.backoff.DontRetryException
-import misk.backoff.ExponentialBackoff
-import misk.backoff.RetryConfig
-import misk.backoff.retry
 import misk.jdbc.DataSourceConfig
 import misk.jdbc.DataSourceType
 import misk.jdbc.uniqueInt
@@ -82,20 +77,7 @@ class DockerCockroachCluster(
     const val CONTAINER_NAME = "misk-cockroach-testing"
 
     fun pullImage() {
-      if (imagePulled.get()) {
-        return
-      }
-
-      synchronized(this) {
-        if (imagePulled.get()) {
-          return
-        }
-
-        if (runCommand("docker images --digests | grep -q $SHA || docker pull $IMAGE") != 0) {
-          logger.warn("Failed to pull Cockroach docker image. Proceeding regardless.")
-        }
-        imagePulled.set(true)
-      }
+      pullDockerImage(IMAGE, SHA, imagePulled, logger, "Cockroach")
     }
 
     private val imagePulled = AtomicBoolean()
@@ -153,14 +135,7 @@ class DockerCockroachCluster(
           .id!!
       val containerId = containerId!!
       docker.startContainerCmd(containerId).exec()
-      docker
-        .logContainerCmd(containerId)
-        .withStdErr(true)
-        .withStdOut(true)
-        .withFollowStream(true)
-        .withSince(0)
-        .exec(LogContainerResultCallback())
-        .awaitStarted()
+      docker.followContainerLogs(containerId, LogContainerResultCallback())
     }
     logger.info("Started Cockroach with container id $containerId")
 
@@ -169,18 +144,11 @@ class DockerCockroachCluster(
   }
 
   private fun waitUntilHealthy() {
-    try {
-      val retryConfig = RetryConfig.Builder(20, ExponentialBackoff(Duration.ofSeconds(1), Duration.ofSeconds(5)))
-      retry(retryConfig.build()) {
-        cluster.openConnection().use { c ->
-          val result = c.createStatement().executeQuery("SELECT 1").uniqueInt()
-          check(result == 1)
-        }
+    awaitDatabaseHealthy("Cockroach cluster") {
+      cluster.openConnection().use { c ->
+        val result = c.createStatement().executeQuery("SELECT 1").uniqueInt()
+        check(result == 1)
       }
-    } catch (e: DontRetryException) {
-      throw Exception(e.message)
-    } catch (e: Exception) {
-      throw Exception("Cockroach cluster failed to start up in time", e)
     }
   }
 
